@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SPF & DMARC Record Checker</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #f0f0f0;
+    }
+    .container {
+        max-width: 600px;
+        margin: 50px auto;
+        padding: 20px;
+        background-color: #fff;
+        border-radius: 5px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+    h1 {
+        text-align: center;
+    }
+    input[type="text"] {
+        width: calc(100% - 20px);
+        padding: 10px;
+        margin: 10px 0;
+    }
+    button {
+        padding: 10px 20px;
+        background-color: #007bff;
+        color: #fff;
+        border: none;
+        cursor: pointer;
+    }
+    button:hover {
+        background-color: #0056b3;
+    }
+    pre {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        display: none;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        background-color: #f9f9f9;
+    }
+    #spfResult, #dmarcResult {
+        display: none;
+    }
+</style>
+</head>
+<body>
+<div class="container">
+    <h1>SPF & DMARC Record Checker</h1>
+    <input type="text" id="domainInput" placeholder="Enter domain URL">
+    <button onclick="checkSPF()">Check SPF Records</button>
+    <button onclick="checkDMARC()">Check DMARC Records</button>
+    <button onclick="clearResult()">Clear Result</button>
+    <pre id="spfResult"></pre>
+    <pre id="dmarcResult"></pre>
+</div>
+
+<script>
+function extractDomain(url) {
+    // Use a regular expression to extract the domain name
+    var domainRegex = /^(?:https?:\/\/)?(?:[^@\/\n]+@)?(?:www\.)?([^:\/\n]+)/g;
+    var match = domainRegex.exec(url);
+    return match ? match[1] : null;
+}
+
+function updateInputField(domain) {
+    document.getElementById("domainInput").value = domain;
+}
+
+function checkSPF() {
+    var inputUrl = document.getElementById("domainInput").value;
+    var domain = extractDomain(inputUrl);
+    if (!domain) {
+        alert("Invalid URL format!");
+        return;
+    }
+    updateInputField(domain);
+    document.getElementById("spfResult").innerText = "Fetching SPF records...";
+    document.getElementById("dmarcResult").style.display = "none";
+    fetch(`https://dns.google/resolve?name=${domain}&type=TXT`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.Answer && data.Answer.length > 0) {
+            var spfRecords = data.Answer.map(record => record.data).join('\n');
+            document.getElementById("spfResult").innerText = spfRecords;
+            document.getElementById("spfResult").style.display = "block";
+        } else {
+            document.getElementById("spfResult").innerText = "No SPF records found for this domain.";
+            document.getElementById("spfResult").style.display = "block";
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        document.getElementById("spfResult").innerText = "Error fetching SPF records.";
+        document.getElementById("spfResult").style.display = "block";
+    });
+}
+
+function checkDMARC() {
+    var inputUrl = document.getElementById("domainInput").value;
+    var domain = extractDomain(inputUrl);
+    if (!domain) {
+        alert("Invalid URL format!");
+        return;
+    }
+    updateInputField(domain);
+    document.getElementById("dmarcResult").innerText = "Fetching DMARC records...";
+    document.getElementById("spfResult").style.display = "none";
+    fetch(`https://dns.google/resolve?name=_dmarc.${domain}&type=TXT`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.Answer && data.Answer.length > 0) {
+            var dmarcRecords = data.Answer.map(record => record.data).join('\n');
+            document.getElementById("dmarcResult").innerText = dmarcRecords;
+            document.getElementById("dmarcResult").style.display = "block";
+        } else {
+            document.getElementById("dmarcResult").innerText = "No DMARC records found for this domain.";
+            document.getElementById("dmarcResult").style.display = "block";
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        document.getElementById("dmarcResult").innerText = "Error fetching DMARC records.";
+        document.getElementById("dmarcResult").style.display = "block";
+    });
+}
+
+function clearResult() {
+    document.getElementById("spfResult").innerText = "";
+    document.getElementById("spfResult").style.display = "none";
+    document.getElementById("dmarcResult").innerText = "";
+    document.getElementById("dmarcResult").style.display = "none";
+}
+</script> 
+</body>
+</html>
